@@ -1,6 +1,7 @@
 #pragma once
 #include <types.hpp>
 #include <tcpsocket.hpp>
+#include <messagesstore.hpp>
 
 class TCPSender : public bclasses::Enable_shared_from_this<TCPSender> {
  public:
@@ -17,7 +18,8 @@ class TCPSender : public bclasses::Enable_shared_from_this<TCPSender> {
   TCPSender(bclasses::IO_service& service);
 
  private:
-  bclasses::atomicULong m_packageCounter;
+  bclasses::AUnsigned m_packageCounter;
   bclasses::TCPSession::TCPSessionSPtr m_session;
   bclasses::MessageStruct m_msg;
+  bclasses::AHashMapStore m_store;
 };

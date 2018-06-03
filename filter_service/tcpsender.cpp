@@ -15,7 +15,7 @@ void TCPSender::write(bclasses::MessageStruct&& data) {
 
 void TCPSender::pushData(bclasses::MessageStruct&& data) {
   ++m_packageCounter;
-  if (data.MessageData == bclasses::DataKey) {
+  if (m_store.findSet(data) && ( data.MessageData == bclasses::DataKey)) {
     write(std::move(data));
   }
 }

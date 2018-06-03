@@ -49,7 +49,7 @@ bool UDPSender::doWrite(const bclasses::ErrorCode& error, size_t bTransferred) {
     if (bTransferred == sizeof(*m_current)) {
       ++m_current;
       if (m_current != m_end) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         m_sock->write(*m_current);
       } else {
         TRACE_LOG_MESSAGE("All data send");
@@ -64,7 +64,6 @@ bool UDPSender::doWrite(const bclasses::ErrorCode& error, size_t bTransferred) {
 }
 
 bool UDPSender::doRead(bclasses::MessageStruct&& data, const bclasses::ErrorCode& error, size_t bTransferred) {
-  TRACE_LOG;
   TRACE_LOG_MESSAGE(error.message());
   return true;
 }

@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <vector>
 #include <unordered_map>
+#include <map>
 
 namespace bclasses {
 
@@ -42,7 +43,7 @@ bool operator!=(const MessageStruct& lft, const MessageStruct& rgt);
 using Thread = std::thread;
 using COutType = decltype(std::cout);
 using ByteData = uint8_t;
-using atomicULong = std::atomic<unsigned long>;
+using AUnsigned = std::atomic<unsigned>;
 
 extern COutType& Cout;
 
@@ -53,7 +54,10 @@ template <typename T>
 using Shared_ptr = std::shared_ptr<T>;
 
 template <typename T>
-using Unique_lock = std::unique_lock<T>;
+using UniqueLock = std::unique_lock<T>;
+
+template <typename T>
+using LockGuard = std::lock_guard<T>;
 
 template <typename T, typename... Args>
 Shared_ptr<T> make_shared(Args&&... arg) {
@@ -88,7 +92,10 @@ using CBFuntion = std::function<bool(const bclasses::ErrorCode&, size_t)>;
 using CBRFuntion = std::function<bool(bclasses::MessageStruct&&, const bclasses::ErrorCode&, size_t)>;
 using CBDataFunc = std::function<void(bclasses::MessageStruct&&) >;
 using Unordered_map = std::unordered_map<decltype(MessageStruct::MessageId), MessageStruct>;
+using Map = std::map<decltype(MessageStruct::MessageId), MessageStruct>;
 using UnorderedMapPtr = Shared_ptr<Unordered_map>;
+
+
 
 namespace IP = boost::asio::ip;
 namespace ba = boost::asio;
@@ -111,7 +118,7 @@ class TimeCalc {
 
   TimeCalc() : m_value{clock::now()} {}
   void reset() noexcept { m_value = clock::now(); }
-  long getDuration() { return (clock::now() - m_value).count(); }
+  long getDuration() { return (std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - m_value)).count(); }
 
  private:
   TimeValue m_value;

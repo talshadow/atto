@@ -13,7 +13,7 @@ class ThreadPool {
   ThreadPool& operator=(ThreadPool&&) = delete;
 
   template <typename Callable>
-  void operator()(const Callable& fuctor) {
+  void operator()(Callable&& fuctor) {
     m_service.post(std::forward<Callable>(fuctor));
   }
 

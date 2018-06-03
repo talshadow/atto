@@ -16,8 +16,10 @@ add_subdirectory(filter_service)
 add_subdirectory(reciver)
 add_subdirectory(senders)
 add_subdirectory(data_generator)
+add_subdirectory(data_filter)
 
 add_dependencies(filter_service atto_common_data)
 add_dependencies(reciver atto_common_data)
 add_dependencies(senders atto_common_data)
+add_dependencies(data_filter atto_common_data)
 

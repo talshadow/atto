@@ -28,10 +28,14 @@ class TCPSession : public Enable_shared_from_this<TCPSession> {
 
  private:
   TCPSession(IO_service& service);
+  void dataPrint(size_t bytes_transferred);
 
   TCPSock m_socket;
   DataVector m_sendData;
+  unsigned currentPos;
   std::array<uint8_t, 1024> m_readBuffer;
+  std::array<uint8_t, sizeof (MessageStruct)> m_struct;
+
 };
 
 class TCPAcceptor : public Enable_shared_from_this<TCPAcceptor> {

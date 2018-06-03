@@ -1,4 +1,5 @@
 #include "tcpsocket.hpp"
+#include <algorithm>
 
 namespace bclasses {
 
@@ -7,14 +8,15 @@ TCPSession::TCPSessionSPtr TCPSession::createInstance(IO_service& service) {
 }
 
 TCPSession::TCPSessionSPtr TCPSession::createInstance(IO_service& service, const char* adress, unsigned short port) {
-   auto session = TCPSessionSPtr(new TCPSession(service));
-   session->connect(adress,port);
-   return session;
+  auto session = TCPSessionSPtr(new TCPSession(service));
+  session->connect(adress, port);
+  return session;
 }
 
 void TCPSession::onRead(const ErrorCode& error, size_t bytes_transferred) {
   if ((!error) && bytes_transferred) {
     TRACE_LOG_MESSAGE(static_cast<char const*>("Read data"));
+    dataPrint(bytes_transferred);
     m_socket.async_read_some(ba::buffer(m_readBuffer), std::bind(&TCPSession::onRead, shared_from_this(),
                                                                  std::placeholders::_1, std::placeholders::_2));
   }
@@ -32,13 +34,13 @@ void TCPSession::onConnect(const ErrorCode& error) {
     execute();
   } else {
     TRACE_LOG_MESSAGE(static_cast<char const*>("reconnect"));
-    connect(m_socket.remote_endpoint().address().to_string().c_str(),m_socket.remote_endpoint().port());
+    connect(m_socket.remote_endpoint().address().to_string().c_str(), m_socket.remote_endpoint().port());
   }
 }
 
-void TCPSession::connect(const char *adress, unsigned short port) {
+void TCPSession::connect(const char* adress, unsigned short port) {
   TCPEndpoint endpoint(IP::address::from_string(adress), port);
-  m_socket.async_connect(endpoint, std::bind(&TCPSession::onConnect,shared_from_this(),std::placeholders::_1));
+  m_socket.async_connect(endpoint, std::bind(&TCPSession::onConnect, shared_from_this(), std::placeholders::_1));
 }
 
 void TCPSession::execute() {
@@ -60,7 +62,26 @@ void TCPSession::close() {
   m_socket.close();
 }
 
-TCPSession::TCPSession(IO_service& service) : m_socket(service), m_readBuffer() {}
+TCPSession::TCPSession(IO_service& service) : m_socket(service), currentPos(0), m_readBuffer(), m_struct() {}
+
+void TCPSession::dataPrint(size_t bytes_transferred) {
+  size_t currenPosition = 0;
+  while (bytes_transferred > currenPosition ) {
+    uint8_t* pBegin = m_readBuffer.data() + currenPosition;
+    size_t size2copy = ((bytes_transferred - currenPosition) >= sizeof(MessageStruct))
+                         ? (sizeof(MessageStruct) - currentPos)
+                         : (sizeof(MessageStruct) - (bytes_transferred - currenPosition) - currentPos);
+    uint8_t* pEnd = (pBegin + size2copy);
+    std::copy(pBegin, pEnd, m_struct.data() + currentPos);
+    currentPos += size2copy;
+    if (sizeof(MessageStruct) == currentPos) {
+      MessageStruct* ptr = reinterpret_cast<MessageStruct*>(m_struct.data());
+      currentPos = 0;
+      Cout << *ptr << '\n';
+    }
+    currenPosition += size2copy;
+  }
+}
 
 TCPAcceptor::TCPAcceptorSPtr TCPAcceptor::createInstance(IO_service& service, const char* adress, unsigned short port) {
   auto instance = Shared_ptr<TCPAcceptor>(new TCPAcceptor(service, adress, port));
