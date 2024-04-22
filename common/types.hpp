@@ -78,6 +78,7 @@ using Decay = std::decay<T>;
 
 using IO_service = boost::asio::io_service;
 using TCPSock = boost::asio::ip::tcp::socket;
+using TCPExecutor = boost::asio::ip::tcp::socket::executor_type;
 using UDPSock = boost::asio::ip::udp::socket;
 using TCPAccept = boost::asio::ip::tcp::acceptor;
 using ErrorCode = boost::system::error_code;

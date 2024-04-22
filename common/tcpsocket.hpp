@@ -13,8 +13,8 @@ class TCPSession : public Enable_shared_from_this<TCPSession> {
   TCPSession& operator=(TCPSession&&) = delete;
   ~TCPSession() = default;
 
-  static TCPSessionSPtr createInstance(IO_service& service);
-  static TCPSessionSPtr createInstance(IO_service& service, const char* adress, unsigned short port);
+  static TCPSessionSPtr createInstance(const TCPExecutor& current_executor);
+  static TCPSessionSPtr createInstance(const TCPExecutor& current_executor, const char* adress, unsigned short port);
 
   void onRead(const ErrorCode& error, size_t bytes_transferred);
   void onWrite(const ErrorCode& error);
@@ -27,7 +27,7 @@ class TCPSession : public Enable_shared_from_this<TCPSession> {
   TCPSock& socket() { return m_socket; }
 
  private:
-  TCPSession(IO_service& service);
+  TCPSession(const TCPExecutor& service);
   void dataPrint(size_t bytes_transferred);
 
   TCPSock m_socket;

@@ -5,7 +5,7 @@
 
 class TCPSender : public bclasses::Enable_shared_from_this<TCPSender> {
  public:
-  static bclasses::Shared_ptr<TCPSender> instance(bclasses::IO_service& service);
+  static bclasses::Shared_ptr<TCPSender> instance(const bclasses::TCPExecutor& tcp_executor);
 
   bool onSend(const bclasses::ErrorCode&, size_t);
   void write(bclasses::MessageStruct&& data);
@@ -15,7 +15,7 @@ class TCPSender : public bclasses::Enable_shared_from_this<TCPSender> {
   bclasses::CBDataFunc dataFunctor();
 
  private:
-  TCPSender(bclasses::IO_service& service);
+  TCPSender(const bclasses::TCPExecutor& tcp_executor);
 
  private:
   bclasses::AUnsigned m_packageCounter;

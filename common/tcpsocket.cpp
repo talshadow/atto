@@ -3,12 +3,12 @@
 
 namespace bclasses {
 
-TCPSession::TCPSessionSPtr TCPSession::createInstance(IO_service& service) {
-  return TCPSessionSPtr(new TCPSession(service));
+TCPSession::TCPSessionSPtr TCPSession::createInstance(const TCPExecutor& current_executor) {
+  return TCPSessionSPtr(new TCPSession(current_executor));
 }
 
-TCPSession::TCPSessionSPtr TCPSession::createInstance(IO_service& service, const char* adress, unsigned short port) {
-  auto session = TCPSessionSPtr(new TCPSession(service));
+TCPSession::TCPSessionSPtr TCPSession::createInstance(const TCPExecutor& current_executor, const char* adress, unsigned short port) {
+  auto session = TCPSessionSPtr(new TCPSession(current_executor));
   session->connect(adress, port);
   return session;
 }
@@ -62,7 +62,7 @@ void TCPSession::close() {
   m_socket.close();
 }
 
-TCPSession::TCPSession(IO_service& service) : m_socket(service), currentPos(0), m_readBuffer(), m_struct() {}
+TCPSession::TCPSession(const TCPExecutor &current_executor) : m_socket(current_executor), currentPos(0), m_readBuffer(), m_struct() {}
 
 void TCPSession::dataPrint(size_t bytes_transferred) {
   size_t currenPosition = 0;
@@ -98,7 +98,8 @@ void TCPAcceptor::onAccept(const TCPSession::TCPSessionSPtr& session, const Erro
 }
 
 void TCPAcceptor::doAccept() {
-  auto soc = TCPSession::createInstance(m_acceptor.get_io_service());
+
+  auto soc = TCPSession::createInstance(m_acceptor.get_executor());
   m_acceptor.async_accept(soc->socket(),
                           std::bind(&TCPAcceptor::onAccept, shared_from_this(), soc, std::placeholders::_1));
 }
