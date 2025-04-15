@@ -27,7 +27,7 @@ ThreadPool::ThreadPool(const unsigned count) : m_workerThreads(count) {
   TRACE_LOG;
 
   for (auto& current : m_workerThreads) {
-    auto functor = [=, &current]() {
+    auto functor = [this, &current]() {
       current.second.reset(new Worker(this->m_service));
       m_service.run();
     };
