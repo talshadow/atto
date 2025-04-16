@@ -1,45 +1,41 @@
 #include "threadpool.hpp"
+#include <exception>
 namespace bclasses {
 
-COutType& Cout = std::cout;
+COutType &Cout = std::cout;
 
 ThreadPool::~ThreadPool() {
   TRACE_LOG;
-
-  for (auto& current : m_workerThreads) {
-    current.second.reset();
+  for (auto &current : m_workerThreads) {
+      current.second->reset();
+      current.second.reset();
   }
 
   m_service.stop();
 
-  for (auto& current : m_workerThreads) {
-    if (current.first.joinable()) {
-      current.first.join();
-    }
+  for (auto &&current : m_workerThreads) {
+      if (current.first.has_value() && current.first.value().joinable()) {
+          current.first.value().join();
+      }
   }
 }
-
 ThreadPool::ThreadPoolPtr ThreadPool::createInstance(const unsigned count) {
   return ThreadPoolPtr(new ThreadPool(count));
 }
 
 ThreadPool::ThreadPool(const unsigned count) : m_workerThreads(count) {
   TRACE_LOG;
-
-  for (auto& current : m_workerThreads) {
-    auto functor = [this, &current]() {
-      current.second.reset(new Worker(this->m_service));
-      m_service.run();
-    };
-
-    Thread thr(functor);
-
-    current.first.swap(thr);
-
-    if (thr.joinable()) {
-      thr.join();
-    }
+  for (auto &current : m_workerThreads) {
+      auto functor = [](WorkerPtr &worker, IO_service &io_service) {
+          worker = std::make_unique<Worker>(io_service.get_executor());
+          try {
+              io_service.run();
+          } catch (std::exception &e) {
+              LOG_ERROR_MESSAGE(std::format("The thread from pool finished with exception: {}", e.what()));
+          }
+      };
+      current.first = Thread(functor, std::ref(current.second), std::ref(m_service));
   }
 }
 
-}  // namespace bclasses
+} // namespace bclasses

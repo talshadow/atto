@@ -13,9 +13,9 @@ bclasses::Shared_ptr<UDPReciver> UDPReciver::instance(bclasses::CBDataFunc&& fil
     reciver->setSocket(std::move(socket));
     return reciver;
   } catch (std::exception& e) {
-    ERROR_LOG_MESSAGE(e.what());
+    LOG_ERROR_MESSAGE(e.what());
   }
-  return bclasses::Shared_ptr<UDPReciver>();
+  return {};
 }
 
 bool UDPReciver::onRead(bclasses::MessageStruct&& msg, const bclasses::ErrorCode& code, size_t readSize) {
@@ -23,10 +23,10 @@ bool UDPReciver::onRead(bclasses::MessageStruct&& msg, const bclasses::ErrorCode
     if (sizeof(bclasses::MessageStruct) == readSize) {
       m_filterFunction(std::move(msg));
     } else {
-      ERROR_LOG_MESSAGE(static_cast<const char*>("Wrong message size"));
+      LOG_ERROR_MESSAGE(static_cast<const char*>("Wrong message size"));
     }
   } else {
-    ERROR_LOG_MESSAGE(code.message());
+    LOG_ERROR_MESSAGE(code.message());
     return false;
   }
   return true;

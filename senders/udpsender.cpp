@@ -36,7 +36,7 @@ bclasses::Shared_ptr<UDPSender> UDPSender::instance(bclasses::IO_service& servic
       producer->startSendSequence();
     }
   } catch (const std::exception& e) {
-    ERROR_LOG_MESSAGE(e.what());
+    LOG_ERROR_MESSAGE(e.what());
   }
   return producer;
 }
@@ -52,19 +52,19 @@ bool UDPSender::doWrite(const bclasses::ErrorCode& error, size_t bTransferred) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         m_sock->write(*m_current);
       } else {
-        TRACE_LOG_MESSAGE("All data send");
-        TRACE_LOG_MESSAGE(std::distance(m_begin,m_end));
+        LOG_TRACE_MESSAGE("All data send");
+        LOG_TRACE_MESSAGE(std::distance(m_begin,m_end));
         m_sock->close();
       }
     }
   } else {
-    ERROR_LOG_MESSAGE(error.message());
+    LOG_ERROR_MESSAGE(error.message());
   }
   return true;
 }
 
 bool UDPSender::doRead(bclasses::MessageStruct&& data, const bclasses::ErrorCode& error, size_t bTransferred) {
-  TRACE_LOG_MESSAGE(error.message());
+  LOG_TRACE_MESSAGE(error.message());
   return true;
 }
 

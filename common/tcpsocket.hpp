@@ -3,6 +3,8 @@
 
 namespace bclasses {
 
+inline constexpr size_t DEFULT_READING_BUFFER_SIZE = 2048;
+
 class TCPSession : public Enable_shared_from_this<TCPSession> {
  public:
   using TCPSessionSPtr = Shared_ptr<TCPSession>;
@@ -11,7 +13,7 @@ class TCPSession : public Enable_shared_from_this<TCPSession> {
   TCPSession(TCPSession&&) = delete;
   TCPSession& operator=(TCPSession&) = delete;
   TCPSession& operator=(TCPSession&&) = delete;
-  ~TCPSession() = default;
+  ~TCPSession();
 
   static TCPSessionSPtr createInstance(const TCPExecutor& current_executor);
   static TCPSessionSPtr createInstance(const TCPExecutor& current_executor, const char* adress, unsigned short port);
@@ -24,16 +26,19 @@ class TCPSession : public Enable_shared_from_this<TCPSession> {
   void execute();
   void write(const DataVector& data);
   void close();
+  bool to_non_blocking_mode();
   TCPSock& socket() { return m_socket; }
 
  private:
   TCPSession(const TCPExecutor& service);
   void dataPrint(size_t bytes_transferred);
+  void connect();
 
+  TCPEndpoint m_endpoint;
   TCPSock m_socket;
   DataVector m_sendData;
   unsigned currentPos;
-  std::array<uint8_t, 1024> m_readBuffer;
+  std::array<uint8_t, DEFULT_READING_BUFFER_SIZE> m_readBuffer;
   std::array<uint8_t, sizeof (MessageStruct)> m_struct;
 
 };
@@ -46,6 +51,7 @@ class TCPAcceptor : public Enable_shared_from_this<TCPAcceptor> {
   TCPAcceptor(TCPAcceptor&&) = delete;
   TCPAcceptor& operator=(TCPAcceptor&) = delete;
   TCPAcceptor& operator=(TCPAcceptor&&) = delete;
+  ~TCPAcceptor();
 
   static TCPAcceptorSPtr createInstance(IO_service& service, const char* adress, unsigned short port);
   void onAccept(const TCPSession::TCPSessionSPtr& session, const ErrorCode& error);

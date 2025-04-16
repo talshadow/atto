@@ -17,7 +17,7 @@ void TCPSender::write(bclasses::MessageStruct&& data) {
 }
 
 void TCPSender::pushData(bclasses::MessageStruct&& data) {
-  ++m_packageCounter;
+  m_packageCounter.fetch_add(1,std::memory_order_relaxed);
   if (m_store.findSet(data) && ( data.MessageData == bclasses::DataKey)) {
     write(std::move(data));
   }

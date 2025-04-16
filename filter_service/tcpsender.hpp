@@ -10,7 +10,7 @@ class TCPSender : public bclasses::Enable_shared_from_this<TCPSender> {
   bool onSend(const bclasses::ErrorCode&, size_t);
   void write(bclasses::MessageStruct&& data);
   void pushData(bclasses::MessageStruct&& data);
-  unsigned long count() const noexcept {return m_packageCounter;}
+  unsigned long count() const noexcept {return m_packageCounter.load(std::memory_order_relaxed);}
 
   bclasses::CBDataFunc dataFunctor();
 

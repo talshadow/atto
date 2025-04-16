@@ -1,5 +1,4 @@
 #include <future>
-#include <iomanip>
 #include <iostream>
 #include <messagesstore.hpp>
 #include <threadpool.hpp>
@@ -42,8 +41,8 @@ int main() {
 
   std::cout << "Time to output: " << std::dec << timer.getDuration() << " ms\n";
   std::cout << "Elements inserted: " << store.size() << '\n';
-  bclasses::AUnsigned A;
-  std::cout << "Is lock free: " << A.is_lock_free() << '\n';
+  bclasses::AUnsigned a_chack;
+  std::cout << "Is lock free: " << a_chack.is_lock_free() << '\n';
 
   return 0;
 }

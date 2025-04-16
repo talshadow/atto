@@ -14,6 +14,7 @@ class UDPSocket : public Enable_shared_from_this<UDPSocket> {
   void onRead(const ErrorCode& error, size_t bTransferred);
   void onWrite(const ErrorCode& error, size_t bTransferred);
   void close();
+  bool to_non_blocking_mode();
 
  private:
   UDPSocket(IO_service& service, const char* adress, unsigned short port,CBRFuntion lR,CBFuntion lW);

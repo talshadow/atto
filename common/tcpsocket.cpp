@@ -1,5 +1,6 @@
 #include "tcpsocket.hpp"
 #include <algorithm>
+#include <exception>
 
 namespace bclasses {
 
@@ -13,34 +14,72 @@ TCPSession::TCPSessionSPtr TCPSession::createInstance(const TCPExecutor& current
   return session;
 }
 
-void TCPSession::onRead(const ErrorCode& error, size_t bytes_transferred) {
-  if ((!error) && bytes_transferred) {
-    TRACE_LOG_MESSAGE(static_cast<char const*>("Read data"));
+TCPSession::~TCPSession()
+{
+    TRACE_LOG;
+}
+
+void TCPSession::onRead(const ErrorCode &error, size_t bytes_transferred) {
+    TRACE_LOG;
+    if (error == ba::error::would_block)
+    {
+        LOG_ERROR_MESSAGE(error.message());
+    }
+    if (error || bytes_transferred == 0U) {
+        LOG_ERROR_MESSAGE(error.message());
+        LOG_WARNING_MESSAGE("Peer lost");
+        connect();
+    }
+
+    LOG_TRACE_MESSAGE(static_cast<char const *>("Read data"));
     dataPrint(bytes_transferred);
-    m_socket.async_read_some(ba::buffer(m_readBuffer), std::bind(&TCPSession::onRead, shared_from_this(),
-                                                                 std::placeholders::_1, std::placeholders::_2));
-  }
+    m_socket.async_read_some(ba::buffer(m_readBuffer),
+                             std::bind(&TCPSession::onRead,
+                                       shared_from_this(),
+                                       std::placeholders::_1,
+                                       std::placeholders::_2));
 }
 
-void TCPSession::onWrite(const ErrorCode& error) {
-  if (error) {
-    ERROR_LOG_MESSAGE(error.message());
-  }
+void TCPSession::onWrite(const ErrorCode &error)
+{
+    TRACE_LOG;
+    if (error == ba::error::would_block)
+    {
+        LOG_ERROR_MESSAGE(error.message());
+    }
+    if (error ) {
+        LOG_ERROR_MESSAGE(error.message());
+        LOG_WARNING_MESSAGE("Peer lost");
+        connect();
+    }
 }
 
-void TCPSession::onConnect(const ErrorCode& error) {
-  if (!error) {
-    TRACE_LOG_MESSAGE(static_cast<char const*>("connected"));
-    execute();
-  } else {
-    TRACE_LOG_MESSAGE(static_cast<char const*>("reconnect"));
-    connect(m_socket.remote_endpoint().address().to_string().c_str(), m_socket.remote_endpoint().port());
-  }
+void TCPSession::onConnect(const ErrorCode &error)
+{
+    TRACE_LOG;
+    if (!error) {
+        m_endpoint = m_socket.remote_endpoint();
+        LOG_INFO_MESSAGE(
+            std::format("connected: {}:{} ", m_endpoint.address().to_string(),m_endpoint.port()));
+        execute();
+    } else {
+        LOG_ERROR_MESSAGE(error.message());
+        LOG_TRACE_MESSAGE(static_cast<char const *>("reconnect"));
+        connect();
+    }
 }
 
-void TCPSession::connect(const char* adress, unsigned short port) {
-  TCPEndpoint endpoint(IP::address::from_string(adress), port);
-  m_socket.async_connect(endpoint, std::bind(&TCPSession::onConnect, shared_from_this(), std::placeholders::_1));
+void TCPSession::connect(const char *adress, unsigned short port)
+{
+    m_endpoint = TCPEndpoint(IP::address::from_string(adress), port);
+    connect();
+}
+
+void TCPSession::connect()
+{
+    m_socket.async_connect(m_endpoint, [session = std::move(shared_from_this())](const ErrorCode &code) {
+        session->onConnect(code);
+    });
 }
 
 void TCPSession::execute() {
@@ -57,12 +96,39 @@ void TCPSession::close() {
   ErrorCode err;
   m_socket.shutdown(TCPSock::shutdown_both, err);
   if (err) {
-    ERROR_LOG_MESSAGE(err.message());
+    LOG_ERROR_MESSAGE(err.message());
   }
   m_socket.close();
 }
 
-TCPSession::TCPSession(const TCPExecutor &current_executor) : m_socket(current_executor), currentPos(0), m_readBuffer(), m_struct() {}
+bool TCPSession::to_non_blocking_mode()
+{
+    TRACE_LOG;
+    if (!m_socket.non_blocking()) {
+        ErrorCode eCode;
+        m_socket.non_blocking(true, eCode);
+        if (eCode) {
+            LOG_WARNING_MESSAGE(std::format("Socket work in blocking mode: {}", eCode.message()));
+            return false;
+        }
+    }
+    return true;
+}
+
+TCPSession::TCPSession(const TCPExecutor &current_executor)
+    : m_socket(current_executor)
+    , currentPos(0)
+    , m_readBuffer()
+    , m_struct()
+{
+    try {
+        if (m_socket.is_open()) {
+            m_socket.non_blocking(true);
+        }
+    } catch (std::exception &e) {
+        LOG_ERROR_MESSAGE(std::format("Socket running in blocking mode: {}", e.what()));
+    }
+}
 
 void TCPSession::dataPrint(size_t bytes_transferred) {
   size_t currenPosition = 0;
@@ -89,22 +155,61 @@ TCPAcceptor::TCPAcceptorSPtr TCPAcceptor::createInstance(IO_service& service, co
   return instance;
 }
 
-void TCPAcceptor::onAccept(const TCPSession::TCPSessionSPtr& session, const ErrorCode& error) {
-  if (!error) {
-    TRACE_LOG_MESSAGE(static_cast<char const*>("accept socket \n"));
-    session->execute();
-    doAccept();
-  }
+TCPAcceptor::~TCPAcceptor()
+{
+    LOG_INFO_MESSAGE("Acceptor was destroyed");
+    ErrorCode eCode;
+    m_acceptor.close(eCode);
+    if (eCode) {
+        LOG_ERROR_MESSAGE(eCode.message());
+    }
+
+}
+
+void TCPAcceptor::onAccept(const TCPSession::TCPSessionSPtr &session, const ErrorCode &error)
+{
+    TRACE_LOG;
+    if (!error) {
+        LOG_TRACE_MESSAGE(
+            std::format("accept socket: {}", session->socket().remote_endpoint().port()));
+        session->to_non_blocking_mode();
+        session->execute();
+        doAccept();
+    } else {
+        LOG_ERROR_MESSAGE(error.what());
+    }
 }
 
 void TCPAcceptor::doAccept() {
-
+  TRACE_LOG;
   auto soc = TCPSession::createInstance(m_acceptor.get_executor());
   m_acceptor.async_accept(soc->socket(),
-                          std::bind(&TCPAcceptor::onAccept, shared_from_this(), soc, std::placeholders::_1));
+                          [acceptor = std::move(shared_from_this()), soc = soc](
+                              const ErrorCode &eCode) { acceptor->onAccept(soc, eCode); });
 }
 
-TCPAcceptor::TCPAcceptor(IO_service& service, const char* adress, unsigned short port)
-  : m_acceptor(service, TCPEndpoint(IP::address::from_string(adress), port)) {}
+TCPAcceptor::TCPAcceptor(IO_service &service, const char *adress, unsigned short port)
+    : m_acceptor(service.get_executor())
+{
+    TRACE_LOG;
+    auto tcpEndpoint = TCPEndpoint(IP::address::from_string(adress), port);
+    try {
+        m_acceptor.open(tcpEndpoint.protocol());
+        m_acceptor.set_option(IP::tcp::acceptor::reuse_address(true));
+        m_acceptor.set_option(IP::tcp::acceptor::enable_connection_aborted(true));
+        m_acceptor.non_blocking(true);
+        m_acceptor.bind(tcpEndpoint);
+        m_acceptor.listen();
+    } catch (std::exception &e) {
+        LOG_ERROR_MESSAGE("TCPAcceptor Exception");
+        LOG_ERROR_MESSAGE(e.what());
+        ErrorCode er;
+        m_acceptor.close(er);
+        if (er) {
+            LOG_ERROR_MESSAGE(er.message());
+        }
+        throw;
+    }
+}
 
 }  // namespace bclasses
