@@ -20,13 +20,14 @@ public:
     static TCPSessionSPtr createInstance(TCPExecutor const& current_executor, char const* adress, unsigned short port);
 
     void onRead(ErrorCode const& error, size_t bytes_transferred);
-    void onWrite(ErrorCode const& error);
+    void onWrite(ErrorCode const& error, size_t size);
     void onConnect(ErrorCode const& error);
 
     void connect(char const* adress, unsigned short port);
     void execute();
     void write(DataVector const& data);
     void close();
+    void read();
     bool to_non_blocking_mode();
     TCPSock& socket() { return m_socket; }
 

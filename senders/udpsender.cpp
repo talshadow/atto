@@ -7,7 +7,7 @@
 bclasses::Shared_ptr<UDPSender> UDPSender::instance(bclasses::IO_service& service, unsigned dataSet)
 {
     bclasses::Shared_ptr<UDPSender> producer;
-    unsigned short port{0u};
+    unsigned short port{0U};
     try {
         switch (dataSet) {
             case 1:
@@ -28,7 +28,7 @@ bclasses::Shared_ptr<UDPSender> UDPSender::instance(bclasses::IO_service& servic
                 break;
         }
 
-        if ((producer != nullptr) && (port != 0u)) {
+        if ((producer != nullptr) && (port != 0U)) {
             auto sock = bclasses::UDPSocket::instanceClient(service,
                                                             bclasses::DefaultAdress,
                                                             port,
@@ -66,8 +66,7 @@ bool UDPSender::doWrite(bclasses::ErrorCode const& error, size_t bTransferred)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 m_sock->write(*m_current);
             } else {
-                LOG_TRACE_MESSAGE("All data send");
-                LOG_TRACE_MESSAGE(std::distance(m_begin, m_end));
+                LOG_TRACE_MESSAGE("All data send: {}",std::distance(m_begin, m_end));
                 m_sock->close();
             }
         }

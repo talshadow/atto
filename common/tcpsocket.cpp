@@ -21,6 +21,11 @@ TCPSession::TCPSessionSPtr TCPSession::createInstance(TCPExecutor const& current
 TCPSession::~TCPSession()
 {
     TRACE_LOG;
+    if (m_socket.is_open()) {
+        LOG_INFO_MESSAGE(
+            std::format("Close socket: {} -> {}", m_socket.local_endpoint().port(), m_socket.remote_endpoint().port()));
+        close();
+    }
 }
 
 void TCPSession::onRead(ErrorCode const& error, size_t bytes_transferred)
@@ -30,23 +35,23 @@ void TCPSession::onRead(ErrorCode const& error, size_t bytes_transferred)
         LOG_ERROR_MESSAGE(error.message());
     }
     if (error || bytes_transferred == 0U) {
-        LOG_ERROR_MESSAGE(error.message());
-        LOG_WARNING_MESSAGE("Peer lost");
+        LOG_ERROR_MESSAGE(std::format("Peer lost: {}", error.message()));
         connect();
+        return;
     }
 
     LOG_TRACE_MESSAGE(static_cast<char const*>("Read data"));
     dataPrint(bytes_transferred);
-    m_socket.async_read_some(ba::buffer(m_readBuffer),
-                             std::bind(&TCPSession::onRead,
-                                       shared_from_this(),
-                                       std::placeholders::_1,
-                                       std::placeholders::_2));
+    auto callback = [tcp = std::move(shared_from_this())](ErrorCode const& error, size_t bTransferred) {
+        tcp->onRead(error, bTransferred);
+    };
+    m_socket.async_read_some(ba::buffer(m_readBuffer), std::move(callback));
 }
 
-void TCPSession::onWrite(ErrorCode const& error)
+void TCPSession::onWrite(ErrorCode const& error, size_t size)
 {
     TRACE_LOG;
+    LOG_TRACE_MESSAGE(std::format("Write block {} bytes", size));
     if (error == ba::error::would_block) {
         LOG_ERROR_MESSAGE(error.message());
     }
@@ -60,15 +65,26 @@ void TCPSession::onWrite(ErrorCode const& error)
 void TCPSession::onConnect(ErrorCode const& error)
 {
     TRACE_LOG;
-    if (!error) {
-        m_endpoint = m_socket.remote_endpoint();
-        LOG_INFO_MESSAGE(std::format("connected: {}:{} ", m_endpoint.address().to_string(), m_endpoint.port()));
-        execute();
-    } else {
+    if (error) {
         LOG_ERROR_MESSAGE(error.message());
-        LOG_TRACE_MESSAGE(static_cast<char const*>("reconnect"));
         connect();
+        return;
     }
+    auto local_endpoint = m_socket.local_endpoint();
+    if ( 0 != m_endpoint.port()) {
+        m_endpoint = m_socket.remote_endpoint();
+    }
+    LOG_INFO_MESSAGE(std::format("connected: {}:{} --> {}:{} ",
+                                 local_endpoint.address().to_string(),
+                                 local_endpoint.port(),
+                                 m_endpoint.address().to_string(),
+                                 m_endpoint.port()));
+    if (m_endpoint.port() == local_endpoint.port() && m_endpoint.address() == local_endpoint.address()) {
+        LOG_ERROR_MESSAGE("Circular connection!");
+        connect();
+        return;
+    }
+    execute();
 }
 
 void TCPSession::connect(char const* adress, unsigned short port)
@@ -79,35 +95,54 @@ void TCPSession::connect(char const* adress, unsigned short port)
 
 void TCPSession::connect()
 {
-    m_socket.async_connect(m_endpoint, [session = std::move(shared_from_this())](ErrorCode const& code) {
-        session->onConnect(code);
-    });
+    TRACE_LOG;
+    LOG_TRACE_MESSAGE(static_cast<char const*>("reconnect"));
+    if (!m_endpoint.port()) {
+        //It is a server socket. The client should initialize the re-connection.
+        return;
+    }
+    if (m_socket.is_open()) {
+        LOG_INFO_MESSAGE("Socket is open");
+        close();
+    }
+    auto callback = [session = std::move(shared_from_this())](ErrorCode const& code) { session->onConnect(code); };
+    m_socket.async_connect(m_endpoint, std::move(callback));
 }
 
 void TCPSession::execute()
 {
-    m_socket.async_read_some(ba::buffer(m_readBuffer),
-                             std::bind(&TCPSession::onRead,
-                                       shared_from_this(),
-                                       std::placeholders::_1,
-                                       std::placeholders::_2));
+    auto callback = [tcp = std::move(shared_from_this())](ErrorCode const& error, size_t bTransferred) {
+        tcp->onRead(error, bTransferred);
+    };
+    m_socket.async_read_some(ba::buffer(m_readBuffer), std::move(callback));
 }
 
 void TCPSession::write(DataVector const& data)
 {
     ba::async_write(m_socket,
                     ba::buffer(data.data(), data.size()),
-                    std::bind(&TCPSession::onWrite, shared_from_this(), std::placeholders::_1));
+                    [tcp = shared_from_this()](ErrorCode const& error, size_t bTranfered) {
+                        tcp->onWrite(error, bTranfered);
+                    });
 }
 
 void TCPSession::close()
 {
-    ErrorCode err;
-    m_socket.shutdown(TCPSock::shutdown_both, err);
-    if (err) {
-        LOG_ERROR_MESSAGE(err.message());
+    if (m_socket.is_open()) {
+        ErrorCode eCode;
+        m_socket.cancel(eCode);
+        if (eCode) {
+            LOG_ERROR_MESSAGE(eCode.message());
+        }
+        m_socket.shutdown(TCPSock::shutdown_both, eCode);
+        if (eCode) {
+            LOG_ERROR_MESSAGE(eCode.message());
+        }
+        m_socket.close(eCode);
+        if (eCode) {
+            LOG_ERROR_MESSAGE(eCode.message());
+        }
     }
-    m_socket.close();
 }
 
 bool TCPSession::to_non_blocking_mode()
@@ -147,11 +182,11 @@ void TCPSession::dataPrint(size_t bytes_transferred)
         size_t size2copy = ((bytes_transferred - currenPosition) >= sizeof(MessageStruct))
                                ? (sizeof(MessageStruct) - currentPos)
                                : (sizeof(MessageStruct) - (bytes_transferred - currenPosition) - currentPos);
-        uint8_t* pEnd = (pBegin + size2copy);
+        auto* pEnd = (pBegin + size2copy);
         std::copy(pBegin, pEnd, m_struct.data() + currentPos);
         currentPos += size2copy;
         if (sizeof(MessageStruct) == currentPos) {
-            MessageStruct* ptr = reinterpret_cast<MessageStruct*>(m_struct.data());
+            auto* ptr = reinterpret_cast<MessageStruct*>(m_struct.data());
             currentPos = 0;
             Cout << *ptr << '\n';
         }
@@ -170,6 +205,14 @@ TCPAcceptor::~TCPAcceptor()
 {
     LOG_INFO_MESSAGE("Acceptor was destroyed");
     ErrorCode eCode;
+    m_acceptor.cancel(eCode);
+    if (eCode) {
+        LOG_ERROR_MESSAGE(eCode.message());
+    }
+    m_acceptor.release(eCode);
+    if (eCode) {
+        LOG_ERROR_MESSAGE(eCode.message());
+    }
     m_acceptor.close(eCode);
     if (eCode) {
         LOG_ERROR_MESSAGE(eCode.message());
@@ -193,10 +236,10 @@ void TCPAcceptor::doAccept()
 {
     TRACE_LOG;
     auto soc = TCPSession::createInstance(m_acceptor.get_executor());
-    m_acceptor.async_accept(soc->socket(),
-                            [acceptor = std::move(shared_from_this()), soc = soc](ErrorCode const& eCode) {
-                                acceptor->onAccept(soc, eCode);
-                            });
+    auto callback = [acceptor = std::move(shared_from_this()), soc = soc](ErrorCode const& eCode) {
+        acceptor->onAccept(soc, eCode);
+    };
+    m_acceptor.async_accept(soc->socket(), std::move(callback));
 }
 
 TCPAcceptor::TCPAcceptor(IO_service& service, char const* adress, unsigned short port)

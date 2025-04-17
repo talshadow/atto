@@ -13,7 +13,7 @@ bool TCPSender::onSend(bclasses::ErrorCode const& code, size_t size)
 
 void TCPSender::write(bclasses::MessageStruct&& data)
 {
-    uint8_t* pData = reinterpret_cast<uint8_t*>(&data);
+    auto* pData = reinterpret_cast<uint8_t*>(&data);
     bclasses::DataVector sendData(pData, pData + sizeof(data));
     m_session->write(sendData);
 }

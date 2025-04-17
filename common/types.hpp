@@ -16,14 +16,26 @@
 #include <unordered_map>
 #include <vector>
 
-template<typename T>
-constexpr void LOG_TRACE_MESSAGE(T&& msg);
+constexpr void LOG_TRACE_MESSAGE(std::string_view msg);
+constexpr void LOG_INFO_MESSAGE(std::string_view msg);
+constexpr void LOG_WARNING_MESSAGE(std::string_view msg);
+constexpr void LOG_ERROR_MESSAGE(std::string_view msg);
 
-template<typename T>
-constexpr void LOG_WARNING_MESSAGE(T&& msg);
+template<typename... T>
+constexpr void LOG_TRACE_MESSAGE(std::string_view format, T&&... msg);
 
-template<typename T>
-constexpr void LOG_ERROR_MESSAGE(T&& msg);
+template<typename... T>
+constexpr void LOG_WARNING_MESSAGE(std::string_view format, T&&... msg);
+
+template<typename... T>
+constexpr void LOG_ERROR_MESSAGE(std::string_view format, T&&... msg);
+
+
+
+template<typename... T>
+constexpr void LOG_INFO_MESSAGE(std::string_view format, T&&... msg);
+
+
 
 namespace bclasses {
 
@@ -119,7 +131,7 @@ namespace IP = ba::ip;
 
 enum class LOG_MESSAGE_TYPE : std::uint8_t { eTrace, eInfo, eWarning, eError };
 
-constexpr inline char const* LOG_MESSAGE_TYPE_TO_STRING(LOG_MESSAGE_TYPE type)
+constexpr inline std::string_view LOG_MESSAGE_TYPE_TO_STRING(LOG_MESSAGE_TYPE type)
 {
     switch (type) {
         case LOG_MESSAGE_TYPE::eTrace:
@@ -134,10 +146,22 @@ constexpr inline char const* LOG_MESSAGE_TYPE_TO_STRING(LOG_MESSAGE_TYPE type)
     return "UNDEFINED";
 }
 
+template<typename... Types>
+constexpr void LOG_MESSAGE(LOG_MESSAGE_TYPE msgType, std::string_view fmtString, Types&&... msg)
+{
+    std::string realFmt;
+    auto messageType = LOG_MESSAGE_TYPE_TO_STRING(msgType);
+    realFmt.reserve(fmtString.size() + messageType.size() + 1);
+    realFmt.append(messageType);
+    realFmt.append(fmtString);
+    realFmt.append("\n");
+    bclasses::Cout << std::vformat(realFmt, std::make_format_args(msg...));
+}
+
 template<typename T>
 constexpr void LOG_MESSAGE(LOG_MESSAGE_TYPE msgType, T&& msg)
 {
-    bclasses::Cout << std::format("{}: {}\n", LOG_MESSAGE_TYPE_TO_STRING(msgType), std::forward<T>(msg));
+    LOG_MESSAGE(msgType, "{}", std::forward<T>(msg));
 }
 
 struct TraceLog
@@ -145,7 +169,7 @@ struct TraceLog
     TraceLog(char const* input_param)
         : str(input_param)
     {
-        LOG_TRACE_MESSAGE(std::format(" --> {} in", str));
+        LOG_TRACE_MESSAGE(" --> {} in", str);
     }
     ~TraceLog() { LOG_TRACE_MESSAGE(std::format(" <-- {} out", str)); }
 
@@ -177,28 +201,44 @@ private:
 
 } // namespace bclasses
 
-template<typename T>
-constexpr void LOG_TRACE_MESSAGE(T&& msg)
+
+template<typename... T>
+constexpr void LOG_TRACE_MESSAGE(std::string_view format, T&&... msg)
 {
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eTrace, std::forward<T>(msg));
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eTrace, format, std::forward<T>(msg)...);
 }
 
-template<typename T>
-constexpr void LOG_WARNING_MESSAGE(T&& msg)
+constexpr void LOG_TRACE_MESSAGE(std::string_view pattern)
 {
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eWarning, std::forward<T>(msg));
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eTrace, pattern);
 }
 
-template<typename T>
-constexpr void LOG_ERROR_MESSAGE(T&& msg)
+template<typename... T>
+constexpr void LOG_WARNING_MESSAGE(std::string_view pattern, T&&... msg)
 {
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eError, std::forward<T>(msg));
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eWarning, pattern, std::forward<T>(msg)...);
 }
 
-template<typename T>
-constexpr void LOG_INFO_MESSAGE(T&& msg)
+constexpr void LOG_WARNING_MESSAGE(std::string_view pattern)
 {
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eInfo, std::forward<T>(msg));
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eWarning, pattern);
+}
+
+
+constexpr void LOG_ERROR_MESSAGE(std::string_view pattern)
+{
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eError, pattern);
+}
+
+template<typename... T>
+constexpr void LOG_ERROR_MESSAGE(std::string_view pattern, T&&... msg)
+{
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eError,pattern,std::forward<T>(msg)...);
+}
+
+constexpr void LOG_INFO_MESSAGE(std::string_view pattern)
+{
+    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eInfo, pattern);
 }
 
 #define TRACE_LOG bclasses::TraceLog TRACE##__LINE__##__COUNTER__(static_cast<const char*>(__FUNCTION__))

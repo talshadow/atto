@@ -21,6 +21,6 @@ private:
 private:
     bclasses::AUnsigned m_packageCounter;
     bclasses::TCPSession::TCPSessionSPtr m_session;
-    bclasses::MessageStruct m_msg;
+    bclasses::MessageStruct m_msg{};
     bclasses::AHashMapStore m_store;
 };
