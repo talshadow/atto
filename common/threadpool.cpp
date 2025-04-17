@@ -8,8 +8,11 @@ ThreadPool::~ThreadPool()
 {
     TRACE_LOG;
     for (auto& current : m_workerThreads) {
-        current.second->reset();
-        current.second.reset();
+        if(current.second)
+        {
+            current.second->reset();
+            current.second.reset();
+        }
     }
 
     m_service.stop();

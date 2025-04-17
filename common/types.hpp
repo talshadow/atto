@@ -135,15 +135,15 @@ constexpr inline std::string_view LOG_MESSAGE_TYPE_TO_STRING(LOG_MESSAGE_TYPE ty
 {
     switch (type) {
         case LOG_MESSAGE_TYPE::eTrace:
-            return "TRACE";
+            return "TRACE: ";
         case LOG_MESSAGE_TYPE::eWarning:
-            return "WARNING";
+            return "WARNING: ";
         case LOG_MESSAGE_TYPE::eError:
-            return "ERROR";
+            return "ERROR: ";
         case LOG_MESSAGE_TYPE::eInfo:
-            return "INFO";
+            return "INFO: ";
     };
-    return "UNDEFINED";
+    return "UNDEFINED: ";
 }
 
 template<typename... Types>
