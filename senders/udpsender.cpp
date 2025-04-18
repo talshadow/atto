@@ -66,11 +66,13 @@ bool UDPSender::doWrite(bclasses::ErrorCode const& error, size_t bTransferred)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 m_sock->write(*m_current);
             } else {
+                m_isFinished.set_value(true);
                 LOG_TRACE_MESSAGE("All data send: {}",std::distance(m_begin, m_end));
                 m_sock->close();
             }
         }
     } else {
+        m_isFinished.set_value(false);
         LOG_ERROR_MESSAGE(error.message());
     }
     return true;

@@ -7,7 +7,7 @@ int main()
 {
     bclasses::TimeCalc timer;
     try {
-        unsigned ThreadsCount = std::thread::hardware_concurrency() > 2 ? 2 : std::thread::hardware_concurrency() + 1;
+        unsigned ThreadsCount = std::thread::hardware_concurrency() > 4 ? 4 : std::thread::hardware_concurrency() + 1;
         auto pool = bclasses::ThreadPool::createInstance(ThreadsCount);
 
         auto sender = TCPSender::instance(pool->service().get_executor());

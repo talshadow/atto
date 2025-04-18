@@ -1,8 +1,8 @@
 #include <future>
-#include <iostream>
-
 #include "udpsender.hpp"
 #include <threadpool.hpp>
+
+constexpr auto SENDER_AMOUNT = 16U;
 
 int main()
 {
@@ -10,17 +10,21 @@ int main()
     try {
         unsigned ThreadsCount = std::thread::hardware_concurrency() + 1;
         auto pool = bclasses::ThreadPool::createInstance(ThreadsCount);
-
-        UDPSender::instance(pool->service(), 1);
-        UDPSender::instance(pool->service(), 2);
-        UDPSender::instance(pool->service(), 3);
-        UDPSender::instance(pool->service(), 4);
+        std::array<bclasses::Shared_ptr<UDPSender>, SENDER_AMOUNT> m_senders;
+        LOG_INFO_MESSAGE(std::format("Duration after Thread Pool initialization: {}", timer.getDuration()));
+        unsigned index = 0;
+        for (auto& sender : m_senders) {
+            sender = UDPSender::instance(pool->service(), index%4+1);
+            ++index;
+        }
+        LOG_INFO_MESSAGE(std::format("Duration after starts: {}", timer.getDuration()));
+        for (auto& sender : m_senders) {
+            sender->getIsFinishedMarker().get();
+        }
         LOG_INFO_MESSAGE(std::format("Duration: {}", timer.getDuration()));
-        std::cin.get();
 
     } catch (std::exception& e) {
         LOG_ERROR_MESSAGE(e.what());
     }
-
     return 0;
 }
