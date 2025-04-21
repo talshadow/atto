@@ -2,8 +2,6 @@
 #include <exception>
 namespace bclasses {
 
-COutType& Cout = std::cout;
-
 ThreadPool::~ThreadPool()
 {
     TRACE_LOG;

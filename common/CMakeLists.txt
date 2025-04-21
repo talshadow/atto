@@ -9,8 +9,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 
-set(${PROJECT_NAME}_SRC types.cpp threadpool.cpp udpsocket.cpp tcpsocket.cpp)
-set(${PROJECT_NAME}_HDR threadpool.hpp types.hpp tcpsocket.hpp udpsocket.hpp messagesstore.hpp sharedmutex.hpp)
+set(${PROJECT_NAME}_SRC
+  threadpool.cpp
+  udpsocket.cpp
+  tcpsocket.cpp
+  tcpacceptor.cpp
+  json_data_reader.cpp
+  messagestruct.cpp
+)
+
+set(${PROJECT_NAME}_HDR
+  threadpool.hpp
+  types.hpp
+  tcpsocket.hpp
+  udpsocket.hpp
+  messagesstore.hpp
+  sharedmutex.hpp
+  timecalc.h
+  tracelog.h
+  tcpacceptor.h
+  json_data_reader.h
+  messagestruct.h
+  JsonTag.h
+)
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_HDR} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME}

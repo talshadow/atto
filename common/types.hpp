@@ -1,7 +1,10 @@
 #pragma once
+#include "messagestruct.h"
+#include "timecalc.h"
+#include "tracelog.h"
+
 #include <atomic>
 #include <boost/asio.hpp>
-#include <chrono>
 #include <cstdint>
 #include <format>
 #include <functional>
@@ -16,60 +19,18 @@
 #include <unordered_map>
 #include <vector>
 
-constexpr void LOG_TRACE_MESSAGE(std::string_view msg);
-constexpr void LOG_INFO_MESSAGE(std::string_view msg);
-constexpr void LOG_WARNING_MESSAGE(std::string_view msg);
-constexpr void LOG_ERROR_MESSAGE(std::string_view msg);
-
-template<typename... T>
-constexpr void LOG_TRACE_MESSAGE(std::string_view format, T&&... msg);
-
-template<typename... T>
-constexpr void LOG_WARNING_MESSAGE(std::string_view format, T&&... msg);
-
-template<typename... T>
-constexpr void LOG_ERROR_MESSAGE(std::string_view format, T&&... msg);
-
-
-
-template<typename... T>
-constexpr void LOG_INFO_MESSAGE(std::string_view format, T&&... msg);
-
-
-
 namespace bclasses {
-
-#pragma push pack(1)
-struct MessageStruct
-{
-    uint16_t MessageSize;
-    uint8_t MessageType;
-    uint64_t MessageId;
-    uint64_t MessageData;
-};
-#pragma pop
 
 constexpr unsigned short UDPPortFirst = 0xA000;
 constexpr unsigned short UDPPortSecond = 0xA001;
 constexpr unsigned short TCPPort = 0xA00A;
 constexpr auto DefaultAdress = "127.0.0.1";
 constexpr uint64_t DataKey = 10;
-
-constexpr MessageStruct EndOfData{sizeof(bclasses::MessageStruct),
-                                  static_cast<decltype(MessageStruct::MessageType)>(-1),
-                                  static_cast<decltype(MessageStruct::MessageId)>(-1),
-                                  static_cast<decltype(MessageStruct::MessageData)>(-1)};
-
-std::ostream& operator<<(std::ostream& os, MessageStruct const& msg);
-bool operator==(MessageStruct const& lft, MessageStruct const& rgt);
-bool operator!=(MessageStruct const& lft, MessageStruct const& rgt);
+inline constexpr uint8_t ServicePackageType{0xFF}; // It is used for debugging purposes
 
 using Thread = std::thread;
-using COutType = decltype(std::cout);
 using ByteData = uint8_t;
-using AUnsigned = std::atomic<unsigned>;
-
-extern COutType& Cout;
+using AtomicUnsigned = std::atomic<unsigned>;
 
 template<typename T>
 using Unique_ptr = std::unique_ptr<T>;
@@ -101,9 +62,6 @@ using Enable_shared_from_this = std::enable_shared_from_this<T>;
 template<typename T>
 using Optional = std::optional<T>;
 
-template<typename T>
-using Decay = std::decay<T>;
-
 namespace ba = boost::asio;
 
 using IO_service = ba::io_service;
@@ -128,117 +86,6 @@ using Map = std::map<decltype(MessageStruct::MessageId), MessageStruct>;
 using UnorderedMapPtr = Shared_ptr<Unordered_map>;
 
 namespace IP = ba::ip;
-
-enum class LOG_MESSAGE_TYPE : std::uint8_t { eTrace, eInfo, eWarning, eError };
-
-constexpr inline std::string_view LOG_MESSAGE_TYPE_TO_STRING(LOG_MESSAGE_TYPE type)
-{
-    switch (type) {
-        case LOG_MESSAGE_TYPE::eTrace:
-            return "TRACE: ";
-        case LOG_MESSAGE_TYPE::eWarning:
-            return "WARNING: ";
-        case LOG_MESSAGE_TYPE::eError:
-            return "ERROR: ";
-        case LOG_MESSAGE_TYPE::eInfo:
-            return "INFO: ";
-    };
-    return "UNDEFINED: ";
-}
-
-template<typename... Types>
-constexpr void LOG_MESSAGE(LOG_MESSAGE_TYPE msgType, std::string_view fmtString, Types&&... msg)
-{
-    std::string realFmt;
-    auto messageType = LOG_MESSAGE_TYPE_TO_STRING(msgType);
-    realFmt.reserve(fmtString.size() + messageType.size() + 1);
-    realFmt.append(messageType);
-    realFmt.append(fmtString);
-    realFmt.append("\n");
-    bclasses::Cout << std::vformat(realFmt, std::make_format_args(msg...));
-}
-
-template<typename T>
-constexpr void LOG_MESSAGE(LOG_MESSAGE_TYPE msgType, T&& msg)
-{
-    LOG_MESSAGE(msgType, "{}", std::forward<T>(msg));
-}
-
-struct TraceLog
-{
-    TraceLog(char const* input_param)
-        : str(input_param)
-    {
-        LOG_TRACE_MESSAGE(" --> {} in", str);
-    }
-    ~TraceLog() { LOG_TRACE_MESSAGE(std::format(" <-- {} out", str)); }
-
-    TraceLog(TraceLog&) = delete;
-    TraceLog(TraceLog&&) = delete;
-    TraceLog& operator=(TraceLog&) = delete;
-    TraceLog& operator=(TraceLog&&) = delete;
-    char const* str;
-};
-
-class TimeCalc
-{
-public:
-    using clock = std::chrono::high_resolution_clock;
-    using TimeValue = decltype(clock::now());
-
-    TimeCalc()
-        : m_value{clock::now()}
-    {}
-    void reset() noexcept { m_value = clock::now(); }
-    [[nodiscard]] long getDuration() const
-    {
-        return (std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - m_value)).count();
-    }
-
-private:
-    TimeValue m_value;
-};
-
 } // namespace bclasses
 
 
-template<typename... T>
-constexpr void LOG_TRACE_MESSAGE(std::string_view format, T&&... msg)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eTrace, format, std::forward<T>(msg)...);
-}
-
-constexpr void LOG_TRACE_MESSAGE(std::string_view pattern)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eTrace, pattern);
-}
-
-template<typename... T>
-constexpr void LOG_WARNING_MESSAGE(std::string_view pattern, T&&... msg)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eWarning, pattern, std::forward<T>(msg)...);
-}
-
-constexpr void LOG_WARNING_MESSAGE(std::string_view pattern)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eWarning, pattern);
-}
-
-
-constexpr void LOG_ERROR_MESSAGE(std::string_view pattern)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eError, pattern);
-}
-
-template<typename... T>
-constexpr void LOG_ERROR_MESSAGE(std::string_view pattern, T&&... msg)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eError,pattern,std::forward<T>(msg)...);
-}
-
-constexpr void LOG_INFO_MESSAGE(std::string_view pattern)
-{
-    LOG_MESSAGE(bclasses::LOG_MESSAGE_TYPE::eInfo, pattern);
-}
-
-#define TRACE_LOG bclasses::TraceLog TRACE##__LINE__##__COUNTER__(static_cast<const char*>(__FUNCTION__))

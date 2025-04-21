@@ -36,32 +36,13 @@ private:
     void dataPrint(size_t bytes_transferred);
     void connect();
 
-    TCPEndpoint m_endpoint;
     TCPSock m_socket;
+    TCPEndpoint m_endpoint;
     DataVector m_sendData;
-    unsigned currentPos;
-    std::array<uint8_t, DEFULT_READING_BUFFER_SIZE> m_readBuffer;
-    std::array<uint8_t, sizeof(MessageStruct)> m_struct;
+    unsigned currentPos {0};
+    std::array<uint8_t, DEFULT_READING_BUFFER_SIZE> m_readBuffer{};
+    std::array<uint8_t, sizeof(MessageStruct)> m_struct{};
 };
 
-class TCPAcceptor : public Enable_shared_from_this<TCPAcceptor>
-{
-public:
-    using TCPAcceptorSPtr = Shared_ptr<TCPAcceptor>;
 
-    TCPAcceptor(TCPAcceptor&) = delete;
-    TCPAcceptor(TCPAcceptor&&) = delete;
-    TCPAcceptor& operator=(TCPAcceptor&) = delete;
-    TCPAcceptor& operator=(TCPAcceptor&&) = delete;
-    ~TCPAcceptor();
-
-    static TCPAcceptorSPtr createInstance(IO_service& service, char const* adress, unsigned short port);
-    void onAccept(TCPSession::TCPSessionSPtr const& session, ErrorCode const& error);
-
-private:
-    void doAccept();
-    TCPAcceptor(IO_service& service, char const* adress, unsigned short port);
-
-    TCPAccept m_acceptor;
-};
 } // namespace bclasses

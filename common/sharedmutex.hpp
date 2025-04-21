@@ -88,9 +88,9 @@ private:
         return false;
     }
 
-    AUnsigned m_read;
-    AUnsigned m_writeState;
-    AUnsigned m_write;
+    AtomicUnsigned m_read;
+    AtomicUnsigned m_writeState;
+    AtomicUnsigned m_write;
 };
 
 class ReaderMutex

@@ -41,7 +41,7 @@ int main()
 
     std::cout << "Time to output: " << std::dec << timer.getDuration() << " ms\n";
     std::cout << "Elements inserted: " << store.size() << '\n';
-    bclasses::AUnsigned a_chack;
+    bclasses::AtomicUnsigned a_chack;
     std::cout << "Is lock free: " << a_chack.is_lock_free() << '\n';
 
     return 0;

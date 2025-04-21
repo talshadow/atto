@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
+find_package(GTest REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 
