@@ -1,6 +1,7 @@
 #include "tcpsocket.hpp"
 #include <algorithm>
 #include <exception>
+#include "delayed_call.h"
 
 namespace bclasses {
 
@@ -36,7 +37,7 @@ void TCPSession::onRead(ErrorCode const& error, size_t bytes_transferred)
     }
     if (error || bytes_transferred == 0U) {
         LOG_ERROR_MESSAGE(std::format("Peer lost: {}", error.message()));
-        connect();
+        reconnect();
         return;
     }
 
@@ -59,7 +60,7 @@ void TCPSession::onWrite(ErrorCode const& error, size_t size)
     if (error) {
         LOG_ERROR_MESSAGE(error.message());
         LOG_WARNING_MESSAGE("Peer lost");
-        connect();
+        reconnect();
     }
 }
 
@@ -68,7 +69,7 @@ void TCPSession::onConnect(ErrorCode const& error)
     TRACE_LOG;
     if (error) {
         LOG_ERROR_MESSAGE(error.message());
-        connect();
+        reconnect();
         return;
     }
     auto local_endpoint = m_socket.local_endpoint();
@@ -82,7 +83,7 @@ void TCPSession::onConnect(ErrorCode const& error)
                                  m_endpoint.port()));
     if (m_endpoint.port() == local_endpoint.port() && m_endpoint.address() == local_endpoint.address()) {
         LOG_ERROR_MESSAGE("Circular connection!");
-        connect();
+        reconnect();
         return;
     }
     execute();
@@ -97,7 +98,7 @@ void TCPSession::connect(char const* adress, unsigned short port)
 void TCPSession::connect()
 {
     TRACE_LOG;
-    LOG_TRACE_MESSAGE(static_cast<char const*>("reconnect"));
+    LOG_TRACE_MESSAGE(static_cast<char const*>("connect"));
     if (!m_endpoint.port()) {
         //It is a server socket. The client should initialize the re-connection.
         return;
@@ -108,6 +109,26 @@ void TCPSession::connect()
     }
     auto callback = [session = std::move(shared_from_this())](ErrorCode const& code) { session->onConnect(code); };
     m_socket.async_connect(m_endpoint, std::move(callback));
+}
+
+void TCPSession::reconnect()
+{
+    TRACE_LOG;
+    LOG_TRACE_MESSAGE(static_cast<char const*>("connect"));
+    if (!m_endpoint.port()) {
+        //It is a server socket. The client should initialize the re-connection.
+        return;
+    }
+    if (m_socket.is_open()) {
+        LOG_INFO_MESSAGE("Socket is open");
+        close();
+    }
+
+    auto delayedExecution = [session = std::move(shared_from_this()), this]() {
+        connect();
+    };
+
+    AsyncDelayCall(m_socket.get_executor(), std::move(delayedExecution), 150U);
 }
 
 void TCPSession::execute()
@@ -191,15 +212,4 @@ void TCPSession::dataPrint(size_t bytes_transferred)
         currenPosition += size2copy;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
 } // namespace bclasses

@@ -31,6 +31,7 @@ set(${PROJECT_NAME}_HDR
   json_data_reader.h
   messagestruct.h
   JsonTag.h
+  delayed_call.h
 )
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_HDR} ${${PROJECT_NAME}_SRC})

@@ -35,6 +35,7 @@ private:
     TCPSession(TCPExecutor const& service);
     void dataPrint(size_t bytes_transferred);
     void connect();
+    void reconnect();
 
     TCPSock m_socket;
     TCPEndpoint m_endpoint;

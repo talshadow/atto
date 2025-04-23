@@ -65,6 +65,7 @@ using Optional = std::optional<T>;
 namespace ba = boost::asio;
 
 using IO_service = ba::io_service;
+using IOExecutor = ba::any_io_executor;
 using TCPSock = ba::ip::tcp::socket;
 using TCPExecutor = ba::ip::tcp::socket::executor_type;
 using UDPSock = ba::ip::udp::socket;
