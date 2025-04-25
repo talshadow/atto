@@ -57,7 +57,7 @@ template<typename T>
 using Vector = std::vector<T>;
 
 template<typename T>
-using Enable_shared_from_this = std::enable_shared_from_this<T>;
+using EnableSharedFromThis = std::enable_shared_from_this<T>;
 
 template<typename T>
 using Optional = std::optional<T>;

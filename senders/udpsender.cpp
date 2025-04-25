@@ -1,46 +1,23 @@
 #include "udpsender.hpp"
-#include "sender_data1.hpp"
-#include "sender_data2.hpp"
-#include "sender_data3.hpp"
-#include "sender_data4.hpp"
-
-bclasses::Shared_ptr<UDPSender> UDPSender::instance(bclasses::IO_service& service, unsigned dataSet)
+bclasses::Shared_ptr<UDPSender> UDPSender::instance(bclasses::IO_service& service,
+                                                    std::vector<bclasses::MessageStruct>&& dataSet,
+                                                    std::string_view address,
+                                                    unsigned remotePort)
 {
-    bclasses::Shared_ptr<UDPSender> producer;
-    unsigned short port{0U};
+    bclasses::Shared_ptr<UDPSender> producer = std::make_shared<UDPSender>(std::move(dataSet));
     try {
-        switch (dataSet) {
-            case 1:
-                producer.reset(new UDPSender(bclasses::IncomeData1));
-                port = bclasses::UDPPortFirst;
-                break;
-            case 2:
-                producer.reset(new UDPSender(bclasses::IncomeData2));
-                port = bclasses::UDPPortFirst;
-                break;
-            case 3:
-                producer.reset(new UDPSender(bclasses::IncomeData3));
-                port = bclasses::UDPPortSecond;
-                break;
-            case 4:
-                producer.reset(new UDPSender(bclasses::IncomeData4));
-                port = bclasses::UDPPortSecond;
-                break;
-        }
-
-        if ((producer != nullptr) && (port != 0U)) {
+        if (producer != nullptr) {
+            auto readFunction = std::bind(&UDPSender::doRead,
+                                          producer,
+                                          std::placeholders::_1,
+                                          std::placeholders::_2,
+                                          std::placeholders::_3);
+            auto writeFunction = std::bind(&UDPSender::doWrite, producer, std::placeholders::_1, std::placeholders::_2);
             auto sock = bclasses::UDPSocket::instanceClient(service,
-                                                            bclasses::DefaultAdress,
-                                                            port,
-                                                            std::bind(&UDPSender::doRead,
-                                                                      producer,
-                                                                      std::placeholders::_1,
-                                                                      std::placeholders::_2,
-                                                                      std::placeholders::_3),
-                                                            std::bind(&UDPSender::doWrite,
-                                                                      producer,
-                                                                      std::placeholders::_1,
-                                                                      std::placeholders::_2));
+                                                            address,
+                                                            remotePort,
+                                                            std::move(readFunction),
+                                                            std::move(writeFunction));
             producer->setSocket(std::move(sock));
             producer->startSendSequence();
         }
@@ -50,38 +27,39 @@ bclasses::Shared_ptr<UDPSender> UDPSender::instance(bclasses::IO_service& servic
     return producer;
 }
 
-UDPSender::UDPSender(DArray& data)
-    : m_data(data)
-    , m_begin(std::begin(data))
-    , m_current(m_begin)
-    , m_end(std::end(m_data))
+UDPSender::UDPSender(DArray&& data)
+    : m_data(std::move(data))
+    , m_current(m_data.begin())
 {}
 
 bool UDPSender::doWrite(bclasses::ErrorCode const& error, size_t bTransferred)
 {
-    if (!error) {
-        if (bTransferred == sizeof(*m_current)) {
-            ++m_current;
-            if (m_current != m_end) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                m_sock->write(*m_current);
-            } else {
-                m_isFinished.set_value(true);
-                LOG_TRACE_MESSAGE("All data send: {}",std::distance(m_begin, m_end));
-                m_sock->close();
-            }
-        }
-    } else {
+    if (error) {
         m_isFinished.set_value(false);
-        LOG_ERROR_MESSAGE(error.message());
+        LOG_ERROR_MESSAGE("{}:{}", __PRETTY_FUNCTION__, error.message());
+        m_sock->close();
+        return false;
+    }
+
+    if (bTransferred == sizeof(*m_current)) {
+        ++m_current;
+        if (m_current != m_data.end()) {
+            m_sock->write(*m_current);
+        } else {
+            m_isFinished.set_value(true);
+            LOG_TRACE_MESSAGE("All data send: {}", m_data.size());
+            m_sock->close();
+        }
     }
     return true;
 }
 
 bool UDPSender::doRead(bclasses::MessageStruct&& data, bclasses::ErrorCode const& error, size_t bTransferred)
 {
-    LOG_TRACE_MESSAGE(error.message());
-    return true;
+    if (error) {
+        LOG_TRACE_MESSAGE("{}:{}", __PRETTY_FUNCTION__, error.message());
+    }
+    return false;
 }
 
 void UDPSender::setSocket(bclasses::UDPSocket::UDPSocketSPtr&& sock)
@@ -91,5 +69,6 @@ void UDPSender::setSocket(bclasses::UDPSocket::UDPSocketSPtr&& sock)
 
 void UDPSender::startSendSequence()
 {
+    TRACE_LOG;
     m_sock->write(*m_current);
 }

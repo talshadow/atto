@@ -4,7 +4,7 @@
 
 namespace bclasses {
 
-class TCPAcceptor : public Enable_shared_from_this<TCPAcceptor>
+class TCPAcceptor : public EnableSharedFromThis<TCPAcceptor>
 {
 public:
     using TCPAcceptorSPtr = Shared_ptr<TCPAcceptor>;

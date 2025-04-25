@@ -28,7 +28,7 @@ void TCPSender::pushData(bclasses::MessageStruct&& data)
 
 bclasses::CBDataFunc TCPSender::dataFunctor()
 {
-    return bclasses::CBDataFunc{std::bind(&TCPSender::pushData, shared_from_this(), std::placeholders::_1)};
+    return [obj = std::move(shared_from_this())](bclasses::MessageStruct&& data) { obj->pushData(std::move(data)); };
 }
 
 TCPSender::TCPSender(bclasses::TCPExecutor const& tcp_executor)

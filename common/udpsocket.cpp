@@ -7,19 +7,19 @@ UDPSocket::UDPSocketSPtr UDPSocket::instanceServer(IO_service& service,
                                                    CBFuntion&& lW)
 {
     try {
-        auto socket = UDPSocket::UDPSocketSPtr(new UDPSocket(service, nullptr, port, std::move(lR), std::move(lW)));
+        auto socket = UDPSocket::UDPSocketSPtr(new UDPSocket(service, std::string_view(), port, std::move(lR), std::move(lW)));
         socket->execute();
         return socket;
     } catch (std::exception& e) {
         LOG_ERROR_MESSAGE(e.what());
     }
-    return UDPSocket::UDPSocketSPtr();
+    return {};
 }
 
 UDPSocket::UDPSocketSPtr UDPSocket::instanceClient(
-    IO_service& service, char const* adress, unsigned short port, CBRFuntion&& lR, CBFuntion&& lW)
+    IO_service& service, std::string_view IPAaddress, unsigned short port, CBRFuntion&& lR, CBFuntion&& lW)
 {
-    auto socket = UDPSocket::UDPSocketSPtr(new UDPSocket(service, adress, port, std::move(lR), std::move(lW)));
+    auto socket = UDPSocket::UDPSocketSPtr(new UDPSocket(service, IPAaddress, port, std::move(lR), std::move(lW)));
     socket->execute();
     return socket;
 }
@@ -28,7 +28,7 @@ void UDPSocket::write(MessageStruct const& data)
 {
     sendData = data;
     m_socket.async_send_to(ba::buffer(&sendData, sizeof(sendData)),
-                           m_adress,
+                           m_address,
                            [udp = shared_from_this()](ErrorCode const& error, size_t bTransferred) {
                                udp->onWrite(error, bTransferred);
                            });
@@ -37,7 +37,7 @@ void UDPSocket::write(MessageStruct const& data)
 void UDPSocket::execute()
 {
     m_socket.async_receive_from(ba::buffer(m_data.data(), m_data.size()),
-                                m_adress,
+                                m_address,
                                 [udp = shared_from_this()](ErrorCode const& error, size_t bTransferred) {
                                     udp->onRead(error, bTransferred);
                                 });
@@ -45,7 +45,7 @@ void UDPSocket::execute()
 
 void UDPSocket::onRead(ErrorCode const& error, size_t bTransferred)
 {
-    MessageStruct* pData = reinterpret_cast<MessageStruct*>(m_data.data());
+    auto* pData = reinterpret_cast<MessageStruct*>(m_data.data());
     MessageStruct data{*pData};
 
     if ((logicR && logicR(std::move(data), error, bTransferred)) || (!logicR && !error)) {
@@ -57,7 +57,7 @@ void UDPSocket::onRead(ErrorCode const& error, size_t bTransferred)
 
 void UDPSocket::onWrite(ErrorCode const& error, size_t bTransferred)
 {
-    if ((logicR && !logicW(error, bTransferred)) || (!logicR && error)) {
+    if ((logicW && !logicW(error, bTransferred)) || (!logicW && error)) {
         close();
     }
 }
@@ -66,7 +66,6 @@ void UDPSocket::close() {}
 
 bool UDPSocket::to_non_blocking_mode()
 {
-    TRACE_LOG;
     if (!m_socket.non_blocking()) {
         ErrorCode eCode;
         m_socket.non_blocking(true, eCode);
@@ -78,19 +77,19 @@ bool UDPSocket::to_non_blocking_mode()
     return true;
 }
 
-UDPSocket::UDPSocket(IO_service& service, char const* adress, unsigned short port, CBRFuntion lR, CBFuntion lW)
-    : m_socket(service, UDPEndpoint(IP::udp::v4(), adress ? 0 : port))
-    , m_adress(nullptr == adress ? UDPEndpoint() : UDPEndpoint(IP::address::from_string(adress), port))
+UDPSocket::UDPSocket(IO_service& service, std::string_view ipAdress, unsigned short port, CBRFuntion lR, CBFuntion lW)
+    : m_socket(service, UDPEndpoint(IP::udp::v4(), ipAdress.empty() ? port : 0))
+    , m_address(ipAdress.empty() ? UDPEndpoint() : UDPEndpoint(IP::address::from_string(ipAdress.data()), port))
     , m_data(sizeof(MessageStruct))
     , logicR{std::move(lR)}
     , logicW{std::move(lW)}
 {
     to_non_blocking_mode();
-    auto info_string = std::format("local port: {:x} is open: {}\n remoute: {}:{:x}",
+    auto info_string = std::format("local port: {}\nis open: {}\nremoute: {}:{}",
                                    m_socket.local_endpoint().port(),
                                    m_socket.is_open(),
-                                   m_adress.address().to_string(),
-                                   m_adress.port());
+                                   m_address.address().to_string(),
+                                   m_address.port());
     LOG_TRACE_MESSAGE(std::move(info_string));
 }
 

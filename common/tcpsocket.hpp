@@ -5,7 +5,7 @@ namespace bclasses {
 
 inline constexpr size_t DEFULT_READING_BUFFER_SIZE = 2048;
 
-class TCPSession : public Enable_shared_from_this<TCPSession>
+class TCPSession : public EnableSharedFromThis<TCPSession>
 {
 public:
     using TCPSessionSPtr = Shared_ptr<TCPSession>;
@@ -38,6 +38,7 @@ private:
     void reconnect();
 
     TCPSock m_socket;
+    ba::deadline_timer m_Timer;
     TCPEndpoint m_endpoint;
     DataVector m_sendData;
     unsigned currentPos {0};

@@ -3,7 +3,7 @@
 #include <tcpsocket.hpp>
 #include <types.hpp>
 
-class TCPSender : public bclasses::Enable_shared_from_this<TCPSender>
+class TCPSender : public bclasses::EnableSharedFromThis<TCPSender>
 {
 public:
     static bclasses::Shared_ptr<TCPSender> instance(bclasses::TCPExecutor const& tcp_executor);

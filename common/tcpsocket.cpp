@@ -21,7 +21,6 @@ TCPSession::TCPSessionSPtr TCPSession::createInstance(TCPExecutor const& current
 
 TCPSession::~TCPSession()
 {
-    TRACE_LOG;
     if (m_socket.is_open()) {
         LOG_INFO_MESSAGE(
             std::format("Close socket: {} -> {}", m_socket.local_endpoint().port(), m_socket.remote_endpoint().port()));
@@ -31,7 +30,6 @@ TCPSession::~TCPSession()
 
 void TCPSession::onRead(ErrorCode const& error, size_t bytes_transferred)
 {
-    TRACE_LOG;
     if (error == ba::error::would_block) {
         LOG_ERROR_MESSAGE(error.message());
     }
@@ -52,7 +50,6 @@ void TCPSession::onRead(ErrorCode const& error, size_t bytes_transferred)
 
 void TCPSession::onWrite(ErrorCode const& error, size_t size)
 {
-    TRACE_LOG;
     LOG_TRACE_MESSAGE(std::format("Write block {} bytes", size));
     if (error == ba::error::would_block) {
         LOG_ERROR_MESSAGE(error.message());
@@ -66,7 +63,6 @@ void TCPSession::onWrite(ErrorCode const& error, size_t size)
 
 void TCPSession::onConnect(ErrorCode const& error)
 {
-    TRACE_LOG;
     if (error) {
         LOG_ERROR_MESSAGE(error.message());
         reconnect();
@@ -97,7 +93,6 @@ void TCPSession::connect(char const* adress, unsigned short port)
 
 void TCPSession::connect()
 {
-    TRACE_LOG;
     LOG_TRACE_MESSAGE(static_cast<char const*>("connect"));
     if (!m_endpoint.port()) {
         //It is a server socket. The client should initialize the re-connection.
@@ -113,7 +108,6 @@ void TCPSession::connect()
 
 void TCPSession::reconnect()
 {
-    TRACE_LOG;
     LOG_TRACE_MESSAGE(static_cast<char const*>("connect"));
     if (!m_endpoint.port()) {
         //It is a server socket. The client should initialize the re-connection.
@@ -128,7 +122,7 @@ void TCPSession::reconnect()
         connect();
     };
 
-    AsyncDelayCall(m_socket.get_executor(), std::move(delayedExecution), 150U);
+    AsyncDelayCall(&m_Timer, std::move(delayedExecution));
 }
 
 void TCPSession::execute()
@@ -183,6 +177,7 @@ bool TCPSession::to_non_blocking_mode()
 
 TCPSession::TCPSession(TCPExecutor const& current_executor)
     : m_socket(current_executor)
+    , m_Timer(current_executor)
 {
     try {
         if (m_socket.is_open()) {

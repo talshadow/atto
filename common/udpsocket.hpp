@@ -2,7 +2,7 @@
 #include "types.hpp"
 
 namespace bclasses {
-class UDPSocket : public Enable_shared_from_this<UDPSocket>
+class UDPSocket : public EnableSharedFromThis<UDPSocket>
 {
 public:
     using UDPSocketSPtr = Shared_ptr<UDPSocket>;
@@ -12,7 +12,7 @@ public:
                                         CBRFuntion&& lR = CBRFuntion(),
                                         CBFuntion&& lW = CBFuntion());
     static UDPSocketSPtr instanceClient(IO_service& service,
-                                        char const* adress,
+                                        std::string_view adress,
                                         unsigned short port,
                                         CBRFuntion&& lR = CBRFuntion(),
                                         CBFuntion&& lW = CBFuntion());
@@ -25,13 +25,13 @@ public:
     bool to_non_blocking_mode();
 
 private:
-    UDPSocket(IO_service& service, char const* adress, unsigned short port, CBRFuntion lR, CBFuntion lW);
-
+    UDPSocket(IO_service& service, std::string_view ipAdress, unsigned short port, CBRFuntion lR, CBFuntion lW);
+private:
     UDPSock m_socket;
-    UDPEndpoint m_adress;
+    UDPEndpoint m_address;
     DataVector m_data;
     CBRFuntion logicR;
     CBFuntion logicW;
-    MessageStruct sendData;
+    MessageStruct sendData{};
 };
 } // namespace bclasses
