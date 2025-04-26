@@ -17,15 +17,21 @@ int main()
         auto reciver1 = UDPReciver::instance(sender->dataFunctor(), pool->service(), bclasses::UDPPortFirst);
         auto reciver2 = UDPReciver::instance(sender->dataFunctor(), pool->service(), bclasses::UDPPortSecond);
         // #ifdef PERFOMANCE_TEST
-        auto completeReciver1 = reciver1->getFutureComlete();
-        auto completeReciver2 = reciver2->getFutureComlete();
-        completeReciver1.get();
-        completeReciver2.get();
-        LOG_INFO_MESSAGE(std::format("Duration: {}", timer.getDuration()));
+        //auto completeReciver1 = reciver1->getFutureComlete();
+        //auto completeReciver2 = reciver2->getFutureComlete();
+        //completeReciver1.get();
+        //completeReciver2.get();
+
         // #endif
 
         std::cin.get();
+        LOG_INFO_MESSAGE(std::format("Duration: {}", timer.getDuration()));
+        auto amountPort1 = reciver1->getRecevedPackageCount();
+        auto amountPort2 = reciver2->getRecevedPackageCount();
+        LOG_INFO_MESSAGE(std::format("recive port {} : {}", bclasses::UDPPortFirst, amountPort1));
+        LOG_INFO_MESSAGE(std::format("recive port {} : {}", bclasses::UDPPortSecond, amountPort2));
         std::cout << "Count of message: " << sender->count() << '\n';
+
 
     } catch (std::exception& e) {
         LOG_ERROR_MESSAGE(e.what());

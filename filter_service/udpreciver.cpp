@@ -22,7 +22,7 @@ bclasses::Shared_ptr<UDPReciver> UDPReciver::instance(bclasses::CBDataFunc&& fil
     return {};
 }
 
-bool UDPReciver::onRead(bclasses::MessageStruct&& msg, bclasses::ErrorCode const& code, size_t readSize)
+bool UDPReciver::onRead(bclasses::MessageStruct& msg, bclasses::ErrorCode const& code, size_t readSize)
 {
     if (code) {
         LOG_ERROR_MESSAGE(code.message());
@@ -34,7 +34,7 @@ bool UDPReciver::onRead(bclasses::MessageStruct&& msg, bclasses::ErrorCode const
     // #ifdef PERFOMANCE_TEST
     updateCounters(msg.MessageType, msg.MessageData);
     // #endif
-    m_filterFunction(std::move(msg));
+    m_filterFunction(msg);
     return true;
 }
 
@@ -69,7 +69,7 @@ void UDPReciver::updateCounters(uint8_t packageType, unsigned amount) {
         if (limitValue <= counter) {
             m_limitValue.store(0, std::memory_order_relaxed);
             LOG_INFO_MESSAGE("recived all data: {} ", m_socket->socket().local_endpoint().port());
-            m_finished.set_value(true);
+            //m_finished.set_value(true);
         }
     };
 }

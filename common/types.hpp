@@ -21,8 +21,8 @@
 
 namespace bclasses {
 
-constexpr unsigned short UDPPortFirst = 0xA000;
-constexpr unsigned short UDPPortSecond = 0xA001;
+constexpr unsigned short UDPPortFirst = 40960;
+constexpr unsigned short UDPPortSecond = 40961;
 constexpr unsigned short TCPPort = 0xA00A;
 constexpr auto DefaultAdress = "127.0.0.1";
 constexpr uint64_t DataKey = 10;
@@ -80,8 +80,8 @@ using TCPEndpoint = ba::ip::tcp::endpoint;
 using UDPEndpoint = ba::ip::udp::endpoint;
 using String = std::string;
 using CBFuntion = std::function<bool(bclasses::ErrorCode const&, size_t)>;
-using CBRFuntion = std::function<bool(bclasses::MessageStruct&&, bclasses::ErrorCode const&, size_t)>;
-using CBDataFunc = std::function<void(bclasses::MessageStruct&&)>;
+using CBRFuntion = std::function<bool(bclasses::MessageStruct&, bclasses::ErrorCode const&, size_t)>;
+using CBDataFunc = std::function<void(bclasses::MessageStruct&)>;
 using Unordered_map = std::unordered_map<decltype(MessageStruct::MessageId), MessageStruct>;
 using Map = std::map<decltype(MessageStruct::MessageId), MessageStruct>;
 using UnorderedMapPtr = Shared_ptr<Unordered_map>;

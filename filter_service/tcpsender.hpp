@@ -9,8 +9,8 @@ public:
     static bclasses::Shared_ptr<TCPSender> instance(bclasses::TCPExecutor const& tcp_executor);
 
     bool onSend(bclasses::ErrorCode const&, size_t);
-    void write(bclasses::MessageStruct&& data);
-    void pushData(bclasses::MessageStruct&& data);
+    void write(bclasses::MessageStruct& data);
+    void pushData(bclasses::MessageStruct& data);
     unsigned long count() const noexcept { return m_packageCounter.load(std::memory_order_relaxed); }
 
     bclasses::CBDataFunc dataFunctor();

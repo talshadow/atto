@@ -20,7 +20,7 @@ public:
 
 private:
     bool doWrite(bclasses::ErrorCode const& error, size_t bTransferred);
-    bool doRead(bclasses::MessageStruct&& data, bclasses::ErrorCode const& error, size_t bTransferred);
+    bool doRead(bclasses::MessageStruct& data, bclasses::ErrorCode const& error, size_t bTransferred);
     void setSocket(bclasses::UDPSocket::UDPSocketSPtr&& sock);
 
 private:

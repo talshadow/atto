@@ -54,7 +54,7 @@ bool UDPSender::doWrite(bclasses::ErrorCode const& error, size_t bTransferred)
     return true;
 }
 
-bool UDPSender::doRead(bclasses::MessageStruct&& data, bclasses::ErrorCode const& error, size_t bTransferred)
+bool UDPSender::doRead(bclasses::MessageStruct& data, bclasses::ErrorCode const& error, size_t bTransferred)
 {
     if (error) {
         LOG_TRACE_MESSAGE("{}:{}", __PRETTY_FUNCTION__, error.message());

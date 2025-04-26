@@ -1,23 +1,27 @@
-#include <future>
 #include "udpsender.hpp"
-#include <threadpool.hpp>
-#include <json_data_reader.h>
 #include <boost/program_options.hpp>
-#include <filesystem>
 #include <cstdlib>
+#include <filesystem>
+#include <future>
+#include <json_data_reader.h>
+#include <threadpool.hpp>
 
 constexpr auto SENDER_AMOUNT = 1U;
 
-namespace po=boost::program_options;
+namespace po = boost::program_options;
 
-int main(int argc, char**argv)
+int main(int argc, char** argv)
 {
     po::options_description desc("Allowed options");
-    desc.add_options()("help,h", "produce help message")("file,f", po::value<std::string>(), "path to file with data");
+    // clang-format off
+    desc.add_options()("help,h","produce help message")
+                      ("file,f", po::value<std::string>(),"path to file with data")
+                      ("port,p", po::value<unsigned>(), "server prot")
+                      ("address,a", po::value<std::string>(),"server ip adress");
+    // clang-format on
     std::string fileName;
     std::string ipAdress{bclasses::DefaultAdress};
     unsigned ipPort{bclasses::UDPPortFirst};
-
 
     try {
         po::variables_map varMap;
@@ -40,6 +44,15 @@ int main(int argc, char**argv)
             LOG_ERROR_MESSAGE("Mandatory data file wasn't provided");
             return EXIT_FAILURE;
         }
+
+        if (varMap.count("port")) {
+            ipPort = varMap["port"].as<unsigned>();
+        }
+
+        if (varMap.count("address")) {
+            ipAdress = varMap["address"].as<std::string>();
+        }
+
     } catch (po::error const& error) {
         LOG_ERROR_MESSAGE("options: {} ", error.what());
         return EXIT_FAILURE;
@@ -62,7 +75,7 @@ int main(int argc, char**argv)
         LOG_INFO_MESSAGE(std::format("Duration: {}", timer.getDuration()));
 
     } catch (std::exception& e) {
-        LOG_ERROR_MESSAGE("Catched exception: ",e.what());
+        LOG_ERROR_MESSAGE("Catched exception: ", e.what());
     }
     return EXIT_SUCCESS;
 }

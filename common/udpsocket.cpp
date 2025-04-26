@@ -34,22 +34,30 @@ void UDPSocket::write(MessageStruct const& data)
                            });
 }
 
+void UDPSocket::read()
+{
+    auto callback = [udp = shared_from_this()](ErrorCode const& error, size_t bTransferred) {
+        udp->onRead(error, bTransferred);
+    };
+    m_socket.async_receive_from(ba::buffer(&m_reciveData, sizeof(m_reciveData)), m_address, std::move(callback));
+}
+
 void UDPSocket::execute()
 {
-    m_socket.async_receive_from(ba::buffer(m_data.data(), m_data.size()),
-                                m_address,
-                                [udp = shared_from_this()](ErrorCode const& error, size_t bTransferred) {
-                                    udp->onRead(error, bTransferred);
-                                });
+    read();
 }
 
 void UDPSocket::onRead(ErrorCode const& error, size_t bTransferred)
 {
-    auto* pData = reinterpret_cast<MessageStruct*>(m_data.data());
-    MessageStruct data{*pData};
-
-    if ((logicR && logicR(std::move(data), error, bTransferred)) || (!logicR && !error)) {
-        execute();
+    if (error) {
+        LOG_ERROR_MESSAGE("udp onRead: {}", error.what());
+        close();
+        return;
+    }
+    auto data = m_reciveData;
+    execute();
+    if ((logicR && logicR(data, error, bTransferred)) || (!logicR && !error)) {
+       // execute();
     } else {
         close();
     }
@@ -77,14 +85,20 @@ bool UDPSocket::to_non_blocking_mode()
     return true;
 }
 
-UDPSocket::UDPSocket(IO_service& service, std::string_view ipAdress, unsigned short port, CBRFuntion lR, CBFuntion lW)
+UDPSocket::UDPSocket(
+    IO_service& service, std::string_view ipAdress, unsigned short port, CBRFuntion lRead, CBFuntion lWrite)
     : m_socket(service, UDPEndpoint(IP::udp::v4(), ipAdress.empty() ? port : 0))
     , m_address(ipAdress.empty() ? UDPEndpoint() : UDPEndpoint(IP::address::from_string(ipAdress.data()), port))
-    , m_data(sizeof(MessageStruct))
-    , logicR{std::move(lR)}
-    , logicW{std::move(lW)}
+    , logicR{std::move(lRead)}
+    , logicW{std::move(lWrite)}
 {
     to_non_blocking_mode();
+    boost::asio::socket_base::receive_buffer_size optRecvSize(sizeof(MessageStruct) * 100001 * 2);
+    ErrorCode eCode;
+    m_socket.set_option(optRecvSize, eCode);
+    if (eCode) {
+        LOG_INFO_MESSAGE("Set socket read buffer failure: {}", eCode.what());
+    }
     auto info_string = std::format("local port: {}\nis open: {}\nremoute: {}:{}",
                                    m_socket.local_endpoint().port(),
                                    m_socket.is_open(),

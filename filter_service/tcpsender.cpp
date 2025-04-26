@@ -11,24 +11,24 @@ bool TCPSender::onSend(bclasses::ErrorCode const& code, size_t size)
     return true;
 }
 
-void TCPSender::write(bclasses::MessageStruct&& data)
+void TCPSender::write(bclasses::MessageStruct& data)
 {
     auto* pData = reinterpret_cast<uint8_t*>(&data);
     bclasses::DataVector sendData(pData, pData + sizeof(data));
     m_session->write(sendData);
 }
 
-void TCPSender::pushData(bclasses::MessageStruct&& data)
+void TCPSender::pushData(bclasses::MessageStruct& data)
 {
     m_packageCounter.fetch_add(1, std::memory_order_relaxed);
     if (m_store.findSet(data) && (data.MessageData == bclasses::DataKey)) {
-        write(std::move(data));
+        write(data);
     }
 }
 
 bclasses::CBDataFunc TCPSender::dataFunctor()
 {
-    return [obj = std::move(shared_from_this())](bclasses::MessageStruct&& data) { obj->pushData(std::move(data)); };
+    return [obj = std::move(shared_from_this())](bclasses::MessageStruct& data) { obj->pushData(data); };
 }
 
 TCPSender::TCPSender(bclasses::TCPExecutor const& tcp_executor)
