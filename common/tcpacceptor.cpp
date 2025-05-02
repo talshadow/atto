@@ -63,8 +63,7 @@ TCPAcceptor::TCPAcceptor(IO_service& service, char const* adress, unsigned short
         m_acceptor.bind(tcpEndpoint);
         m_acceptor.listen();
     } catch (std::exception& e) {
-        LOG_ERROR_MESSAGE("TCPAcceptor Exception");
-        LOG_ERROR_MESSAGE(e.what());
+        LOG_ERROR_MESSAGE("TCPAcceptor Exception: {}", e.what());
         ErrorCode er;
         m_acceptor.close(er);
         if (er) {
