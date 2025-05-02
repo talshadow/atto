@@ -1,23 +1,21 @@
 #include "threadpool.hpp"
-#include <exception>
+#include <algorithm>
 namespace bclasses {
 
 ThreadPool::~ThreadPool()
 {
     TRACE_LOG;
-    for (auto& current : m_workerThreads) {
-        if(current.second)
-        {
-            current.second->reset();
-            current.second.reset();
-        }
+    auto hasBrokenThread = std::all_of(m_workerThreads.begin(), m_workerThreads.end(), [](Thread const& thread) {
+        return !thread.joinable();
+    });
+    if (hasBrokenThread) {
+        LOG_ERROR_MESSAGE("Some thread is not joinable");
     }
-
+    m_guard.reset();
     m_service.stop();
-
-    for (auto&& current : m_workerThreads) {
-        if (current.first.has_value() && current.first.value().joinable()) {
-            current.first.value().join();
+    for (auto& thread : m_workerThreads) {
+        if (thread.joinable()) {
+            thread.join();
         }
     }
 }
@@ -27,19 +25,22 @@ ThreadPool::ThreadPoolPtr ThreadPool::createInstance(unsigned const count)
 }
 
 ThreadPool::ThreadPool(unsigned const count)
-    : m_workerThreads(count)
+    : m_guard{m_service.get_executor()}
 {
     TRACE_LOG;
-    for (auto& current : m_workerThreads) {
-        auto functor = [](WorkerPtr& worker, IO_service& io_service) {
-            worker = std::make_unique<Worker>(io_service.get_executor());
-            try {
-                io_service.run();
-            } catch (std::exception& e) {
-                LOG_ERROR_MESSAGE(std::format("The thread from pool finished with exception: {}", e.what()));
-            }
-        };
-        current.first = Thread(functor, std::ref(current.second), std::ref(m_service));
+    m_workerThreads.reserve(count);
+    for (unsigned index = 0; index < count; ++index) {
+        m_workerThreads.emplace_back(&ThreadPool::threadRutine, this);
+    }
+}
+
+void ThreadPool::threadRutine()
+{
+    ErrorCode errCode;
+    m_service.run(errCode);
+    if(errCode)
+    {
+        LOG_ERROR_MESSAGE(std::format("The thread from pool finished with exception: {}", errCode.what()));
     }
 }
 

@@ -21,11 +21,13 @@ public:
 
     IO_service& service() noexcept { return m_service; }
     static ThreadPoolPtr createInstance(unsigned count);
-
 private:
     ThreadPool(unsigned count);
+    void threadRutine();
 
+
+    IO_service  m_service;
+    WorkerGuard m_guard;
     WorkerThreads m_workerThreads;
-    IO_service m_service;
 };
 } // namespace bclasses
